@@ -1,0 +1,30 @@
+{
+  "name": "n4m-jitter-bridge",
+  "version": "1.0.0",
+  "main": "inference.js",
+  "scripts": {
+    "start": "node dist/from-jit-net-send.js",
+    "dev": "tsx --watch ",
+    "build": "tsc -p tsconfig-build.json"
+  },
+  "keywords": [
+    "max",
+    "msp",
+    "jitter",
+    "n4m",
+    "onnxruntime"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "onnxruntime-node": "^1.21.1",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/max-api": "^2.0.0",
+    "@types/node": "^16.18.23",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "@napi-rs/canvas": "latest"
+  }
+}
