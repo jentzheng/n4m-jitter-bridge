@@ -394,7 +394,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 288.0, 216.0, 130.0, 22.0 ],
-					"text" : "dictionary u179003692"
+					"text" : "dictionary u678006398"
 				}
 
 			}
@@ -755,7 +755,7 @@
 			}
 , 			{
 				"box" : 				{
-					"clipheight" : 20.0,
+					"clipheight" : 21.399999999999999,
 					"data" : 					{
 						"clips" : [ 							{
 								"absolutepath" : "oh.mov",
@@ -790,17 +790,6 @@
 								"content_state" : 								{
 									"loop" : 1,
 									"vol" : 0
-								}
-
-							}
-, 							{
-								"absolutepath" : "/Users/jentzheng/Desktop/latown-sanyuanli/media/San Yuan Li.mp4",
-								"filename" : "San Yuan Li.mp4",
-								"filekind" : "moviefile",
-								"id" : "u719011121",
-								"loop" : 1,
-								"content_state" : 								{
-									"loop" : 1
 								}
 
 							}
@@ -1335,13 +1324,6 @@
  ],
 		"originid" : "pat-4",
 		"dependency_cache" : [ 			{
-				"name" : "San Yuan Li.mp4",
-				"bootpath" : "~/Desktop/latown-sanyuanli/media",
-				"patcherrelativepath" : "../../../../../Desktop/latown-sanyuanli/media",
-				"type" : "mpg4",
-				"implicit" : 1
-			}
-, 			{
 				"name" : "chickens.mp4",
 				"bootpath" : "C74:/media/jitter",
 				"type" : "mpg4",
