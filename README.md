@@ -2,7 +2,7 @@
 
 ![screenshot](/screenshot.png)
 
-This is a Node.js-based example designed to facilitate communication between Max/MSP and external machine learning or image processing systems. It provides utilities for handling image data, performing object detection, and managing data streams from Max/MSP's **jit.net.send**.
+This is a Node.js-based example designed to facilitate communication between Jitter's matrix and external machine learning like ONNX js or Tensorflow js. It provides utilities for handling image data, performing object detection, and managing data streams from Max/MSP/Jitter's **jit.net.send**.
 
 ## Features
 
@@ -13,14 +13,14 @@ This is a Node.js-based example designed to facilitate communication between Max
 
 ## Installation
 
-1. Clone the repository:
+Clone the repository:
 
 ```sh
 cd ~/Documents/Max\ 9/Library
 git clone https://github.com/jentzheng/n4m-jitter-bridge.git
 ```
 
-2. Install dependencies:
+Install dependencies:
 
 ```sh
 pnpm install && pnpm run build
@@ -28,19 +28,19 @@ pnpm install && pnpm run build
 npm install && npm run build
 ```
 
-3. Open the Max patch.
-
 ## Usage
 
 ### From Jitter's jit.net.send
 
 - **Workflow**:
-  - Receives GRGB image data.
+  - Parse data from Jitter
   - Converts it to RGB using `grgb2rgb`.
   - Runs YOLOv12n on the RGB data.
   - Sends detection results back to Max/MSP.
 
-## TODO
+## TODO and questions
 
+- Add more model inference examples like YOLO-pose or YOLO-seg
 - Should I use `node-addon-api` to parse the data from Jitter?
-- Evaluate `from-syphon.ts` (not sure if it's reasonable for live processing as it allocates too much memory).
+- Evaluate `from-syphon.ts` (not sure if it's suitable for live processing as it allocates too much memory).
+- Is it possible to send real-time base64 data, such as image segments, back to Max?
