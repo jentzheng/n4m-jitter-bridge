@@ -33,7 +33,7 @@ async function prepareImageTensorFromRGB(
     .toBuffer();
 
   // normalize
-  const floatArray = new Float32Array(3 * modelHeight * modelWidth);
+  const floatArray = new Float32Array(resized);
   const pixelCount = modelWidth * modelHeight;
 
   for (let i = 0; i < pixelCount; i++) {
@@ -51,8 +51,8 @@ async function prepareImageTensorFromRGB(
 }
 
 export type Detection = {
-  xyxy: number[];
-  coco: number[];
+  xyxy: [number, number, number, number];
+  coco: [number, number, number, number];
   score: number;
   label: string;
 };

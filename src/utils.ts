@@ -62,7 +62,6 @@ export function matrixToBuffer(buffer: Buffer<ArrayBuffer>) {
   }
 
   const matrixHeader = parseMatrixHeader(buffer.subarray(8, HEADER_SIZE + 8));
-  // console.log("Matrix Header:", matrixHeader);
 
   const totalSize = HEADER_SIZE + 8 + matrixHeader.datasize;
   if (buffer.length < totalSize) {

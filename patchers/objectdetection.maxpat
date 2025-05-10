@@ -10,13 +10,26 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 82.0, 100.0, 1533.0, 983.0 ],
+		"rect" : [ 82.0, 100.0, 1371.0, 983.0 ],
 		"gridonopen" : 2,
 		"gridsize" : [ 8.0, 8.0 ],
 		"gridsnaponopen" : 2,
 		"objectsnaponopen" : 0,
 		"subpatcher_template" : "snap_to_grid_template",
 		"boxes" : [ 			{
+				"box" : 				{
+					"attr" : "nagle",
+					"id" : "obj-32",
+					"maxclass" : "attrui",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"parameter_enable" : 0,
+					"patching_rect" : [ 56.0, 832.0, 200.0, 22.0 ]
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-77",
 					"maxclass" : "comment",
@@ -105,7 +118,6 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "jit_gl_texture", "" ],
 					"patching_rect" : [ 544.0, 464.0, 168.0, 49.0 ],
-					"presentation_linecount" : 3,
 					"text" : "jit.gl.pix @gen srcdimcrop.genjit @dim 512 512 @adapt 0"
 				}
 
@@ -116,7 +128,7 @@
 					"maxclass" : "newobj",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 24.0, 880.0, 68.0, 22.0 ],
+					"patching_rect" : [ 24.0, 920.0, 68.0, 22.0 ],
 					"text" : "print RESP"
 				}
 
@@ -128,7 +140,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 96.0, 760.0, 120.0, 74.0 ],
+					"patching_rect" : [ 88.0, 728.0, 120.0, 74.0 ],
 					"text" : "qlim > 100\nAvoid Error:\njit.net.send: Data is being input faster than it can be sent."
 				}
 
@@ -262,7 +274,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 104.0, 616.0, 120.0, 47.0 ],
+					"patching_rect" : [ 136.0, 624.0, 120.0, 47.0 ],
 					"text" : "compress the matrix in order to save the bandwidth"
 				}
 
@@ -394,7 +406,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 288.0, 216.0, 130.0, 22.0 ],
-					"text" : "dictionary u678006398"
+					"text" : "dictionary u700005835"
 				}
 
 			}
@@ -595,7 +607,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 3,
 					"outlettype" : [ "jit_gl_texture", "bang", "" ],
-					"patching_rect" : [ 272.0, 96.0, 272.0, 22.0 ],
+					"patching_rect" : [ 272.0, 56.0, 272.0, 22.0 ],
 					"text" : "jit.world @visible 0 @enable 1 @output_texture 1"
 				}
 
@@ -646,7 +658,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 24.0, 848.0, 133.0, 22.0 ],
+					"patching_rect" : [ 24.0, 888.0, 133.0, 22.0 ],
 					"text" : "jit.net.send @port 7474"
 				}
 
@@ -726,6 +738,8 @@
 					"saved_object_attributes" : 					{
 						"autostart" : 0,
 						"defer" : 0,
+						"node_bin_path" : "",
+						"npm_bin_path" : "",
 						"watch" : 0
 					}
 ,
@@ -800,7 +814,8 @@
 								"id" : "u342007378",
 								"loop" : 1,
 								"content_state" : 								{
-									"loop" : 1
+									"loop" : 1,
+									"vol" : 0
 								}
 
 							}
@@ -888,7 +903,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 272.0, 64.0, 150.0, 22.0 ]
+					"patching_rect" : [ 272.0, 24.0, 150.0, 22.0 ]
 				}
 
 			}
@@ -913,6 +928,19 @@
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 198.0, 56.0, 49.0, 22.0 ],
 					"text" : "resume"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"attr" : "latency",
+					"id" : "obj-30",
+					"maxclass" : "attrui",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"parameter_enable" : 0,
+					"patching_rect" : [ 56.0, 856.0, 200.0, 22.0 ]
 				}
 
 			}
@@ -1092,8 +1120,22 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-10", 0 ],
+					"source" : [ "obj-30", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-50", 0 ],
 					"source" : [ "obj-31", 1 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-10", 0 ],
+					"source" : [ "obj-32", 0 ]
 				}
 
 			}

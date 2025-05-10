@@ -1,11 +1,12 @@
 {
   "name": "n4m-jitter-bridge",
   "version": "1.0.0",
-  "main": "inference.js",
+  "main": "dist/from-jit-net-send.js",
   "scripts": {
     "start": "node dist/from-jit-net-send.js",
-    "dev": "tsx --watch ",
-    "build": "tsc -p tsconfig-build.json"
+    "dev": "tsx --watch src/from-jit-net-send.ts ",
+    "build": "tsc -p tsconfig-build.json",
+    "test": "tsx --test --watch"
   },
   "keywords": [
     "max",
@@ -21,10 +22,10 @@
     "sharp": "^0.33.5"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "latest",
     "@types/max-api": "^2.0.0",
     "@types/node": "^16.18.23",
     "tsx": "^4.19.4",
-    "typescript": "^5.8.3",
-    "@napi-rs/canvas": "latest"
+    "typescript": "^5.8.3"
   }
 }

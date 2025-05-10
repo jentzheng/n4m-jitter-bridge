@@ -2,7 +2,6 @@ import net, { Socket } from "node:net";
 import MaxApi from "max-api";
 import { createSession, predict } from "./object-detection";
 import { createJMLPBuffer, grgb2rgb, matrixToBuffer } from "./utils";
-import { writeFileSync } from "node:fs";
 
 let Max: typeof MaxApi | undefined;
 
@@ -19,10 +18,6 @@ const handleSocket = async (socket: Socket) => {
 
   let dataBuffer: Buffer<ArrayBuffer> = Buffer.alloc(0); // Initialize buffer to accumulate data
 
-  server.on("connection", (stream) => {
-    console.log("someone connected!", stream);
-  });
-
   socket.on("data", async (chunk) => {
     dataBuffer = Buffer.concat([dataBuffer, chunk]);
 
@@ -33,15 +28,17 @@ const handleSocket = async (socket: Socket) => {
           break;
         }
         const { data, width, height, time: clientTime } = matrixResult;
+        const baseTime = new Date().getTime();
+        const correctedClientTime = baseTime + clientTime * 1000; // 转换为毫秒
 
         // capture the data for future testing
         // writeFileSync("./grgbdata.rawdata", data);
-        // clearup the processed data
 
+        // clearup the processed data
         const totalSize = 288 + 8 + data.length;
         dataBuffer = dataBuffer.subarray(totalSize);
 
-        const serverStart = performance.now();
+        const serverStart = Date.now();
 
         //GRGB to RGB
         const { rgbBuffer, originalWidth, originalHeight } = grgb2rgb(
@@ -59,15 +56,22 @@ const handleSocket = async (socket: Socket) => {
           3
         );
 
-        const serverEnd = performance.now();
+        const serverEnd = Date.now();
+        // console.log("clientTime ", correctedClientTime);
+        // console.log("serverStart", serverStart);
+        // console.log("serverEnd  ", serverEnd);
+        // console.log(`Call to doSomething took ${serverEnd - serverStart} ms.`);
+
+        const jmlpBuffer = createJMLPBuffer(
+          correctedClientTime,
+          serverStart,
+          serverEnd
+        );
+        socket.write(jmlpBuffer);
 
         if (detections.length > 0) {
           Max && (await Max.outlet({ detections }));
         }
-
-        // console.log(serverStart, serverEnd);
-        const jmlpBuffer = createJMLPBuffer(clientTime, serverStart, serverEnd);
-        socket.write(jmlpBuffer);
       }
     } catch (err: unknown) {
       console.error("Error during prediction:", err);
@@ -82,5 +86,3 @@ const handleSocket = async (socket: Socket) => {
 
 const server = net.createServer(handleSocket);
 server.listen(7474, () => console.log("Server listening on port 7474."));
-
-export { grgb2rgb };
