@@ -29,7 +29,7 @@ const handleSocket = async (socket: Socket) => {
         }
         const { data, width, height, time: clientTime } = matrixResult;
         const baseTime = new Date().getTime();
-        const correctedClientTime = baseTime + clientTime * 1000; // 转换为毫秒
+        const correctedClientTime = baseTime + clientTime * 1000;
 
         // capture the data for future testing
         // writeFileSync("./grgbdata.rawdata", data);
