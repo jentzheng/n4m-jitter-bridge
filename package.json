@@ -1,28 +1,28 @@
 {
   "name": "n4m-jitter-bridge",
   "version": "1.0.0",
-  "main": "dist/from-jit-net-send.js",
+  "main": "dist/jitter-bridge.js",
   "scripts": {
-    "start": "node dist/from-jit-net-send.js",
-    "dev": "tsx --watch src/from-jit-net-send.ts ",
+    "start": "node dist/jitter-bridge.js",
+    "dev": "tsx --watch src/jitter-bridge.ts --server-port=7474 --wss-port=8080",
     "build": "tsc -p tsconfig-build.json",
+    "build:watch": "tsc -p tsconfig-build.json --watch",
     "test": "tsx --test --watch"
   },
   "keywords": [
     "max",
     "msp",
     "jitter",
-    "n4m",
-    "onnxruntime"
+    "n4m"
   ],
-  "author": "",
+  "author": "Jent Zheng",
   "license": "ISC",
   "dependencies": {
-    "onnxruntime-node": "^1.21.1",
-    "sharp": "^0.33.5"
+    "@roamhq/wrtc": "^0.8.0",
+    "sharp": "^0.33.5",
+    "ws": "^8.18.2"
   },
   "devDependencies": {
-    "@napi-rs/canvas": "latest",
     "@types/max-api": "^2.0.0",
     "@types/node": "^16.18.23",
     "tsx": "^4.19.4",
