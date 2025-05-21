@@ -10,37 +10,13 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 922.0, 100.0, 285.0, 983.0 ],
+		"rect" : [ 922.0, 100.0, 772.0, 983.0 ],
 		"gridonopen" : 2,
 		"gridsize" : [ 8.0, 8.0 ],
 		"gridsnaponopen" : 2,
 		"objectsnaponopen" : 0,
 		"subpatcher_template" : "snap_to_grid_template",
 		"boxes" : [ 			{
-				"box" : 				{
-					"id" : "obj-60",
-					"maxclass" : "button",
-					"numinlets" : 1,
-					"numoutlets" : 1,
-					"outlettype" : [ "bang" ],
-					"parameter_enable" : 0,
-					"patching_rect" : [ 64.0, 472.0, 24.0, 24.0 ]
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-35",
-					"maxclass" : "newobj",
-					"numinlets" : 1,
-					"numoutlets" : 2,
-					"outlettype" : [ "jit_matrix", "" ],
-					"patching_rect" : [ 64.0, 504.0, 146.0, 22.0 ],
-					"text" : "jit.noise 4 char 1920 1080"
-				}
-
-			}
-, 			{
 				"box" : 				{
 					"id" : "obj-10",
 					"maxclass" : "newobj",
@@ -59,7 +35,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 952.0, 472.0, 197.0, 33.0 ],
+					"patching_rect" : [ 952.0, 456.0, 197.0, 33.0 ],
 					"text" : "Run it in an external browser or remote PC"
 				}
 
@@ -156,7 +132,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 24.0, 600.0, 47.0, 22.0 ],
-					"text" : "qlim 50"
+					"text" : "qlim 80"
 				}
 
 			}
@@ -401,12 +377,12 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-24",
-					"linecount" : 6,
+					"linecount" : 5,
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 128.0, 544.0, 120.0, 87.0 ],
-					"text" : "HD ? qlim >100\nSD ? qlim 50-100\nAvoid Error:\njit.net.send: Data is being input faster than it can be sent."
+					"patching_rect" : [ 128.0, 544.0, 120.0, 74.0 ],
+					"text" : "\nAvoid Error:\njit.net.send: Data is being input faster than it can be sent."
 				}
 
 			}
@@ -835,12 +811,12 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
-					"patching_rect" : [ 336.0, 584.0, 134.0, 22.0 ],
+					"patching_rect" : [ 336.0, 584.0, 131.0, 22.0 ],
 					"saved_object_attributes" : 					{
 						"legacy" : 0
 					}
 ,
-					"text" : "dict.unpack predictions:"
+					"text" : "dict.unpack detections:"
 				}
 
 			}
@@ -954,17 +930,19 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
-					"patching_rect" : [ 272.0, 272.0, 278.0, 22.0 ],
+					"patching_rect" : [ 272.0, 272.0, 272.0, 22.0 ],
 					"saved_object_attributes" : 					{
 						"autostart" : 1,
 						"defer" : 0,
+						"node_bin_path" : "",
+						"npm_bin_path" : "",
 						"watch" : 1
 					}
 ,
 					"style" : "default",
-					"text" : "node.script _jitter-bridge.js @watch 1 @autostart 1",
+					"text" : "node.script jitter-bridge.js @watch 1 @autostart 1",
 					"textfile" : 					{
-						"filename" : "_jitter-bridge.js",
+						"filename" : "jitter-bridge.js",
 						"flags" : 0,
 						"embed" : 0,
 						"autowatch" : 1
@@ -987,7 +965,7 @@
 			}
 , 			{
 				"box" : 				{
-					"clipheight" : 20.333333333333332,
+					"clipheight" : 31.0,
 					"data" : 					{
 						"clips" : [ 							{
 								"absolutepath" : "oh.mov",
@@ -1006,30 +984,6 @@
 								"filename" : "dvkite.mov",
 								"filekind" : "moviefile",
 								"id" : "u625010428",
-								"loop" : 1,
-								"content_state" : 								{
-									"loop" : 1,
-									"vol" : 0
-								}
-
-							}
-, 							{
-								"absolutepath" : "/Users/jentzheng/Desktop/latown-sanyuanli/media/latown.mp4",
-								"filename" : "latown.mp4",
-								"filekind" : "moviefile",
-								"id" : "u123004086",
-								"loop" : 1,
-								"content_state" : 								{
-									"loop" : 1,
-									"vol" : 0
-								}
-
-							}
-, 							{
-								"absolutepath" : "/Users/jentzheng/Desktop/latown-sanyuanli/media/San Yuan Li.mp4",
-								"filename" : "San Yuan Li.mp4",
-								"filekind" : "moviefile",
-								"id" : "u871011183",
 								"loop" : 1,
 								"content_state" : 								{
 									"loop" : 1,
@@ -1565,13 +1519,6 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-35", 0 ],
-					"source" : [ "obj-60", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
 					"destination" : [ "obj-48", 0 ],
 					"source" : [ "obj-61", 0 ]
 				}
@@ -1701,13 +1648,6 @@
 			}
  ],
 		"dependency_cache" : [ 			{
-				"name" : "San Yuan Li.mp4",
-				"bootpath" : "~/Desktop/latown-sanyuanli/media",
-				"patcherrelativepath" : "../../../../../Desktop/latown-sanyuanli/media",
-				"type" : "mpg4",
-				"implicit" : 1
-			}
-, 			{
 				"name" : "chickens.mp4",
 				"bootpath" : "C74:/media/jitter",
 				"type" : "mpg4",
@@ -1750,10 +1690,10 @@
 				"implicit" : 1
 			}
 , 			{
-				"name" : "latown.mp4",
-				"bootpath" : "~/Desktop/latown-sanyuanli/media",
-				"patcherrelativepath" : "../../../../../Desktop/latown-sanyuanli/media",
-				"type" : "mpg4",
+				"name" : "jitter-bridge.js",
+				"bootpath" : "~/Documents/Max 9/Library/n4m-jitter-bridge/dist",
+				"patcherrelativepath" : "../dist",
+				"type" : "TEXT",
 				"implicit" : 1
 			}
 , 			{

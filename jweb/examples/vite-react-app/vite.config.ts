@@ -6,9 +6,16 @@ import tailwindcss from "@tailwindcss/vite";
 // https://vite.dev/config/
 export default defineConfig({
   base: "./",
-  // assetsInclude: ["**/*.onnx"],
+  assetsInclude: ["**/*.onnx"],
   optimizeDeps: {
     exclude: ["onnxruntime-web"],
   },
-  plugins: [react(), tailwindcss(), viteSingleFile()],
+  // worker: {
+  // format: "es",
+  // },
+  plugins: [
+    react(),
+    tailwindcss(),
+    // viteSingleFile({ removeViteModuleLoader: true }),
+  ],
 });

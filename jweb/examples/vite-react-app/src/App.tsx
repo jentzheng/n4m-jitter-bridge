@@ -34,21 +34,19 @@ function App() {
   const canvasEle = useRef<HTMLCanvasElement>(null);
   const resultCanvasEle = useRef<HTMLCanvasElement>(null);
 
-  const initConnection = (address: string) => {
+  const initConnection = async (address: string) => {
     const detectorWorker = new Worker(
-      new URL("./utils/worker-object-detection.ts", import.meta.url),
+      new URL("./utils/worker-object-detection", import.meta.url),
       { type: "module" }
     );
+    // const detectorWorker = new Worker(worker_import.default, {});
+
     detectorWorkerRef.current = detectorWorker;
 
     const ws = new WebSocket(address);
     wsRef.current = ws;
     const pc = new RTCPeerConnection();
     pcRef.current = pc;
-
-    // ask for video track
-    // pc.addTransceiver("video", { direction: "recvonly" });
-    // pc.da
 
     ws.onopen = async () => {
       console.log("[WebSocket] connected");
