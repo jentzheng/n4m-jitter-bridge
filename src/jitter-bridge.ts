@@ -3,11 +3,10 @@ import { WebSocketServer } from "ws";
 import wrtc from "@roamhq/wrtc";
 import {
   DecodeJitMatrix,
-  FrameChunkEncoder,
   grgbtorgb,
-  bufferToMatrix,
   createJMLPBuffer,
   ParsedBuffer,
+  jpegBufferToMatrix,
 } from "./utils";
 
 import MaxApi from "max-api";
@@ -20,9 +19,7 @@ const config = {
   serverPort: process.argv
     .find((v) => v.includes("--server-port"))
     ?.split("=")[1],
-  remotePort: process.argv
-    .find((v) => v.includes("--remote-port"))
-    ?.split("=")[1],
+
   wssPort: process.argv.find((v) => v.includes("--wss-port"))?.split("=")[1],
 
   secret:
@@ -49,10 +46,25 @@ wss &&
     console.log("WebSocket connected");
     const parameters = url.parse(req.url || "", true).query;
     const token = parameters.token;
+    const user = parameters.user;
+    const clientPort = parameters.jit_net_recv_port as string | null;
+
     if (token !== config.secret) {
       ws.close(4001, "Unauthorized");
       return;
     }
+
+    const client = new net.Socket();
+    clientPort &&
+      client
+        .connect(parseInt(clientPort), () => {
+          console.log(
+            `Socket Client: [jit.net.recv @port ${clientPort}] connected`
+          );
+        })
+        .on("error", (err) => {
+          console.error("Socket Client Err:", err);
+        });
 
     const peerConnection = new wrtc.RTCPeerConnection();
 
@@ -64,6 +76,12 @@ wss &&
         console.log("Server DataChannel is open");
         connectedPeers.set(ws, { peerConnection, dataChannel });
       };
+
+      dataChannel.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
+        const buffer = await jpegBufferToMatrix(event.data);
+        client.write(buffer);
+      };
+
       dataChannel.onclose = () => {
         console.log("Server DataChannel is closed");
         connectedPeers.delete(ws);
@@ -120,6 +138,7 @@ wss &&
         conn.peerConnection.close();
       }
       connectedPeers.delete(ws);
+      client.destroy();
     });
   });
 
@@ -153,13 +172,3 @@ config.serverPort &&
   socketServer.listen(parseInt(config.serverPort), () =>
     console.log(`Socket Server: listening on port ${config.serverPort}.`)
   );
-
-const client = new net.Socket();
-config.remotePort &&
-  client
-    .connect(config.remotePort, () => {
-      console.log("Socket Client: [jit.net.recv @port 7575] connected");
-    })
-    .on("error", (err) => {
-      console.error("Socket Client: [jit.net.recv @port 7575] not connected");
-    });

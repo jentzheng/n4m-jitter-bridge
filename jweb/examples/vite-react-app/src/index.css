@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
+@plugin "daisyui";
 
-body {
-  background-color: black;
+
+
+.input {
+  outline: 0;
+  border-radius: 0;
 }

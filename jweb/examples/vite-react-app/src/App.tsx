@@ -1,50 +1,34 @@
 import { useState, useEffect, useRef } from "react";
+import { NavLink, Outlet, useSearchParams } from "react-router";
+import { ConnectionContext } from "./hooks";
 
 function App() {
+  const [searchParams, setSearchParams] = useSearchParams({
+    host: "localhost:8080",
+    user: "pc1",
+    token: "mysecret",
+    jit_net_recv_port: "7575",
+  });
+
   const wsRef = useRef<WebSocket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const detectorWorkerRef = useRef<Worker | null>(null);
-  const latestResultsRef = useRef<{
-    type: string;
-    detections:
-      | [
-          {
-            bbox: [number, number, number, number];
-            coco: [number, number, number, number];
-            score: number;
-          }
-        ]
-      | [];
-  }>({
-    type: "",
-    detections: [],
-  });
-  const [drawFps] = useState(5);
 
-  const { hostname } = window.location;
-
-  // const [status, setStatus] = useOptimistic()
   const [connectionState, setConnectionState] = useState({
-    address: `ws://${hostname ?? "localhost"}:8080?token=mysecret`,
+    address: `ws://${searchParams.get("host")}?user=${searchParams.get(
+      "user"
+    )}&token=${searchParams.get("token")}&jit_net_recv_port=${searchParams.get(
+      "jit_net_recv_port"
+    )}`,
     isWSconnected: false,
     isDCopened: false,
   });
 
-  const canvasEle = useRef<HTMLCanvasElement>(null);
-  const resultCanvasEle = useRef<HTMLCanvasElement>(null);
-
   const initConnection = async (address: string) => {
-    const detectorWorker = new Worker(
-      new URL("./utils/worker-object-detection", import.meta.url),
-      { type: "module" }
-    );
-    // const detectorWorker = new Worker(worker_import.default, {});
-
-    detectorWorkerRef.current = detectorWorker;
-
     const ws = new WebSocket(address);
     wsRef.current = ws;
+
     const pc = new RTCPeerConnection();
     pcRef.current = pc;
 
@@ -58,8 +42,6 @@ function App() {
       });
 
       const offer = await pc.createOffer();
-      console.log("offer:", offer);
-
       await pc.setLocalDescription(offer);
       ws.send(JSON.stringify(offer));
     };
@@ -69,14 +51,11 @@ function App() {
         const msg = JSON.parse(event.data);
         switch (msg.type) {
           case "answer": {
-            console.log(msg);
             await pc.setRemoteDescription(new RTCSessionDescription(msg));
             break;
           }
 
           case "candidate": {
-            console.log(msg);
-
             await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
             break;
           }
@@ -111,10 +90,6 @@ function App() {
       }
     };
 
-    pc.onnegotiationneeded = (event) => {
-      console.log("negotiationneeded", event);
-    };
-
     pc.oniceconnectionstatechange = () => {
       console.log("ICE state:", pc.iceConnectionState);
     };
@@ -123,7 +98,7 @@ function App() {
       console.log("PC state:", pc.connectionState);
     };
 
-    const dataChannel = pcRef.current.createDataChannel("frames", {});
+    const dataChannel = pc.createDataChannel("frames", {});
     dataChannel.binaryType = "arraybuffer";
     dataChannelRef.current = dataChannel;
 
@@ -147,30 +122,6 @@ function App() {
           isDCopened: false,
         };
       });
-    };
-
-    dataChannel.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
-      const canvas = canvasEle.current;
-      const resultCanvas = resultCanvasEle.current;
-      const blob = new Blob([event.data], { type: "image/jpeg" });
-
-      detectorWorker.postMessage(blob);
-      const bitmap = await createImageBitmap(blob);
-      // console.log(bitmap);
-
-      if (canvas && resultCanvas) {
-        const ctx = canvas.getContext("2d");
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        resultCanvas.width = bitmap.width;
-        resultCanvas.height = bitmap.height;
-        ctx?.drawImage(bitmap, 0, 0);
-      }
-    };
-
-    detectorWorker.onmessage = (event) => {
-      ws.send(JSON.stringify(event.data));
-      latestResultsRef.current = event.data;
     };
   };
 
@@ -202,107 +153,141 @@ function App() {
     };
   }, [connectionState.address]);
 
-  // drawCanvas
-  useEffect(() => {
-    let lastDraw = 0;
-    let rafId: number;
-
-    function drawLoop() {
-      const now = performance.now();
-
-      if (now - lastDraw > 1000 / drawFps) {
-        const resultCanvas = resultCanvasEle.current;
-        const result = latestResultsRef.current;
-
-        if (resultCanvas && result.detections.length > 0) {
-          const { type, detections } = result;
-
-          const ctx = resultCanvas.getContext("2d");
-          if (ctx) {
-            ctx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
-            ctx.strokeStyle = "#00FF00";
-            ctx.lineWidth = 2;
-            ctx.font = "16px monospace";
-            ctx.fillStyle = "#00FF00";
-            detections.forEach((det) => {
-              const [x1, y1, w, h] = det.coco;
-              ctx.beginPath();
-              ctx.rect(x1, y1, w, h);
-              ctx.stroke();
-              ctx.fillText(
-                `id:${det.id} ${(det.score * 100).toFixed(1)}%`,
-                x1,
-                y1 > 20 ? y1 - 5 : y1 + 15
-              );
-            });
-          }
-        }
-        lastDraw = now;
-      }
-      rafId = requestAnimationFrame(drawLoop);
-    }
-    rafId = requestAnimationFrame(drawLoop);
-    return () => cancelAnimationFrame(rafId);
-  }, [drawFps]);
-
   return (
-    <div className="App h-screen">
-      <form
-        action={(formdata) => {
-          const address = formdata.get("address");
-          if (connectionState.isWSconnected) {
-            disconnect();
-          } else if (address) {
-            setConnectionState((val) => {
-              return {
-                ...val,
-                address: address as string,
-              };
-            });
-            initConnection(address as string);
-          }
-        }}
+    <ConnectionContext.Provider
+      value={{
+        dataChannelRef,
+        wsRef,
+        connectionState,
+        setConnectionState,
+      }}
+    >
+      <div
+        className="grid grid-rows-[auto_1fr_auto] min-h-screen"
+        data-theme="cupcake"
       >
-        <div className="flex">
-          <label
-            id="address"
-            htmlFor="address"
-            className="flex-auto   border-gray-300  sm:text-sm"
-          >
-            <span className="hidden">address</span>
-            <input
-              id="address"
-              name="address"
-              type="url"
-              className="bg-white w-full border-1 border-gray-300 py-1 px-2  text-sm"
-              placeholder="ws://localhost:8080"
-              defaultValue={connectionState.address}
-              required
-            />
-          </label>
+        <form
+          action={(formdata) => {
+            const host = formdata.get("host");
+            const user = formdata.get("user");
+            const token = formdata.get("token");
+            const jitNetRecvPort = formdata.get("jit_net_recv_port");
 
-          <button
-            type="submit"
-            className="inline-block  border border-indigo-600 bg-indigo-600 px-1 py-1 text-sm font-medium text-white hover:bg-transparent hover:text-indigo-600 "
-          >
-            {connectionState.isWSconnected ? "Disconnect" : "Connect"}
-          </button>
-        </div>
-      </form>
+            console.log(jitNetRecvPort);
 
-      <div className="flex bg-gray-600">
-        <div className="relative w-fit h-fit flex-1/3">
-          <canvas
-            ref={canvasEle}
-            className="block max-w-full h-auto bg-gray-500"
-          />
-          <canvas
-            ref={resultCanvasEle}
-            className="absolute top-0 left-0 w-full h-full pointer-events-none"
-          />
-        </div>
+            if (connectionState.isWSconnected) {
+              disconnect();
+            } else if (host && user && token && jitNetRecvPort) {
+              setConnectionState((val) => {
+                return {
+                  ...val,
+                  address: `ws://${host}?user=${user}&token=${token}&jit_net_recv_port=${jitNetRecvPort}`,
+                };
+              });
 
-        <div className="flex-2/3 p-2 text-sm text-white font-mono">
+              initConnection(connectionState.address as string);
+            }
+          }}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 w-full items-end ">
+            <label className="input w-full" htmlFor="host">
+              Host:
+              <input
+                type="text"
+                id="host"
+                name="host"
+                className="grow"
+                placeholder="localhost:8080"
+                value={searchParams.get("host") || ""}
+                onChange={(e) => {
+                  setSearchParams({
+                    ...Object.fromEntries(searchParams),
+                    host: e.target.value,
+                  });
+                }}
+              />
+            </label>
+
+            <label className="input w-full" htmlFor="username">
+              User:
+              <input
+                type="text"
+                name="user"
+                className="grow"
+                value={searchParams.get("user") || ""}
+                onChange={(e) => {
+                  setSearchParams({
+                    ...Object.fromEntries(searchParams),
+                    user: e.target.value,
+                  });
+                }}
+              />
+            </label>
+
+            <label className="input w-full" htmlFor="token">
+              Password:
+              <input
+                type="text"
+                name="token"
+                className="grow"
+                value={searchParams.get("token") || ""}
+                onChange={(e) => {
+                  setSearchParams({
+                    ...Object.fromEntries(searchParams),
+                    token: e.target.value,
+                  });
+                }}
+              />
+            </label>
+
+            <label className="input w-full" htmlFor="token">
+              JitRecvPort:
+              <input
+                type="number"
+                name="jit_net_recv_port"
+                className="grow"
+                value={searchParams.get("jit_net_recv_port") || ""}
+                onChange={(e) => {
+                  setSearchParams({
+                    ...Object.fromEntries(searchParams),
+                    jit_net_recv_port: e.target.value,
+                  });
+                }}
+              />
+            </label>
+
+            <button type="submit" className="btn btn-primary">
+              {connectionState.isWSconnected ? "Disconnect" : "Connect"}
+            </button>
+          </div>
+        </form>
+
+        <main className=" bg-gray-600 max-h-full">
+          <nav role="tablist" className="tabs tabs-border">
+            <NavLink
+              role="tab"
+              className={({ isActive }) =>
+                isActive ? "tab tab-active" : "tab"
+              }
+              to="/"
+            >
+              Detection
+            </NavLink>
+            <NavLink
+              role="tab"
+              className={({ isActive }) =>
+                isActive ? "tab tab-active" : "tab"
+              }
+              to="/camera"
+            >
+              Camera
+            </NavLink>
+          </nav>
+
+          <Outlet />
+        </main>
+
+        <footer className="text-xs py-2 px-4">
           <ul>
             <li>
               {connectionState.isWSconnected
@@ -312,10 +297,11 @@ function App() {
             <li>
               DataChannel: {connectionState.isDCopened ? "Opened" : "Closed"}
             </li>
+            {/* <li>Video Device ID: {selectedDeviceId}</li> */}
           </ul>
-        </div>
+        </footer>
       </div>
-    </div>
+    </ConnectionContext.Provider>
   );
 }
 

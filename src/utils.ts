@@ -205,22 +205,24 @@ export function createJMLPBuffer(
   return buffer;
 }
 
-export function bufferToMatrix(
-  planecount: number,
-  typeStr: "char" | "long" | "float32" | "float64",
-  dim: number[],
-  data: Buffer<ArrayBufferLike>
-): Buffer<ArrayBufferLike> {
-  const typeMap = new Map<typeof typeStr, number>([
-    ["char", 0],
-    ["long", 1],
-    ["float32", 2],
-    ["float64", 3],
-  ]);
+export async function jpegBufferToMatrix(buffer: ArrayBuffer) {
+  const { data, info } = await sharp(buffer).raw().toBuffer({
+    resolveWithObject: true,
+  });
+
+  const planecount = info.channels;
+  const dim = [info.width, info.height];
+
+  // const typeMap = new Map<typeof typeStr, number>([
+  //   ["char", 0],
+  //   ["long", 1],
+  //   ["float32", 2],
+  //   ["float64", 3],
+  // ]);
   const CHUNK_ID = "JMTX";
   const header = Buffer.alloc(288);
 
-  const type = typeMap.get(typeStr)!; // char
+  const type = 0; // char
   const dimstride = [planecount, planecount * dim[0]];
   const time = performance.now() / 1000; // milliseconds
   header.write(CHUNK_ID, 0, 4, "ascii"); // ID
@@ -242,7 +244,7 @@ export function bufferToMatrix(
   // time
   header.writeDoubleBE(time, 280);
 
-  // Chunk prefix
+  // // Chunk prefix
   const chunkHeader = Buffer.alloc(8);
   chunkHeader.write(CHUNK_ID, 0, 4, "ascii");
   chunkHeader.writeUInt32LE(header.length, 4); // LE per spec
