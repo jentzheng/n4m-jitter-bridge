@@ -29,7 +29,7 @@ export const DetectionRoute = () => {
 
     detectorWorker.onmessage = (event: MessageEvent<Result>) => {
       const now = Date.now();
-      const interval = 1000 / 5;
+      const interval = 1000 / 25;
 
       if (now - lastDraw < interval) {
         if (timeoutId) clearTimeout(timeoutId);
@@ -38,9 +38,9 @@ export const DetectionRoute = () => {
           drawResult(event.data);
           lastDraw = Date.now();
         }, interval - (now - lastDraw));
-
-        wsRef.current?.send(JSON.stringify(event.data));
       } else {
+        wsRef.current?.send(JSON.stringify(event.data));
+
         drawResult(event.data);
         lastDraw = now;
       }
