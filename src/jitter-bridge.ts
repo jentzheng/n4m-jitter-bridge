@@ -1,16 +1,16 @@
 import net from "node:net";
-import { WebSocketServer } from "ws";
 import wrtc from "@roamhq/wrtc";
 import {
   DecodeJitMatrix,
-  grgbtorgb,
+  grgbtorgba,
   createJMLPBuffer,
   ParsedBuffer,
-  jpegBufferToMatrix,
+  rgbaBufferToMatrix,
+  rotateRGBA,
 } from "./utils";
+import { io } from "socket.io-client";
 
 import MaxApi from "max-api";
-import url from "url";
 
 const Max: typeof MaxApi | undefined =
   process.env["MAX_ENV"] === "max" ? require("max-api") : undefined;
@@ -19,151 +19,276 @@ const config = {
   serverPort: process.argv
     .find((v) => v.includes("--server-port"))
     ?.split("=")[1],
-
-  wssPort: process.argv.find((v) => v.includes("--wss-port"))?.split("=")[1],
-
-  secret:
-    process.argv.find((v) => v.includes("--token"))?.split("=")[1] ||
-    "mysecret",
+  remoteServer:
+    process.argv.find((v) => v.includes("--remote-server"))?.split("=")[1] ||
+    "http://localhost:8080",
+  roomId:
+    process.argv.find((v) => v.includes("--roomID"))?.split("=")[1] ||
+    "MaxMSPJitter",
 };
 
 console.log(config);
 
-const connectedPeers = new Map<
-  WebSocket,
+const socket = io("http://localhost:8080", {
+  query: {
+    name: "jitter-bridge-n4m",
+    role: "host",
+    roomId: config.roomId,
+  },
+});
+
+socket.on("connect", async () => {
+  socket.emit("join", config.roomId);
+});
+
+const peers = new Map<
+  string,
   {
-    peerConnection: RTCPeerConnection;
-    dataChannel: RTCDataChannel;
+    pc: RTCPeerConnection;
+    client?: net.Socket;
+    jitRecvPort: number;
   }
 >();
 
-const wss =
-  config.wssPort &&
-  new WebSocketServer({ port: Number.parseInt(config.wssPort) });
+const videoSource = new wrtc.nonstandard.RTCVideoSource();
+const videoTrack = videoSource.createTrack();
+const stream = new wrtc.MediaStream();
 
-wss &&
-  wss.on("connection", async (ws, req) => {
-    console.log("WebSocket connected");
-    const parameters = url.parse(req.url || "", true).query;
-    const token = parameters.token;
-    const user = parameters.user;
-    const clientPort = parameters.jit_net_recv_port as string | null;
+socket.on("newUser", async (msg) => {
+  const pc = new wrtc.RTCPeerConnection();
 
-    if (token !== config.secret) {
-      ws.close(4001, "Unauthorized");
-      return;
+  if (peers.has(msg.from)) {
+    peers.get(msg.from)?.pc.close();
+    peers.delete(msg.from);
+  }
+
+  pc.addTrack(videoTrack, stream);
+  const dataChannel = pc.createDataChannel("inferenceResult");
+
+  pc.onnegotiationneeded = async (event) => {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    socket.emit("signal", { description: pc.localDescription, to: msg.from });
+  };
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("signal", { to: msg.from, candidate: event.candidate });
     }
+  };
 
-    const client = new net.Socket();
-    clientPort &&
-      client
-        .connect(parseInt(clientPort), () => {
-          console.log(
-            `Socket Client: [jit.net.recv @port ${clientPort}] connected`
-          );
-        })
-        .on("error", (err) => {
-          console.error("Socket Client Err:", err);
-        });
-
-    const peerConnection = new wrtc.RTCPeerConnection();
-
-    peerConnection.ondatachannel = (event) => {
-      const dataChannel = event.channel;
-      console.log("Server received data channel");
-
-      dataChannel.onopen = () => {
-        console.log("Server DataChannel is open");
-        connectedPeers.set(ws, { peerConnection, dataChannel });
-      };
-
-      dataChannel.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
-        const buffer = await jpegBufferToMatrix(event.data);
-        client.write(buffer);
-      };
-
-      dataChannel.onclose = () => {
-        console.log("Server DataChannel is closed");
-        connectedPeers.delete(ws);
-      };
-    };
-
-    peerConnection.onicecandidate = ({ candidate }) => {
-      if (candidate) {
-        ws.send(JSON.stringify({ type: "candidate", candidate }));
+  pc.onconnectionstatechange = (event) => {
+    switch (pc.connectionState) {
+      case "new": {
+        break;
       }
-    };
-
-    // signaling
-    ws.on("message", async (message) => {
-      const msg = JSON.parse(message);
-
-      switch (msg.type) {
-        case "offer": {
-          await peerConnection.setRemoteDescription(
-            new wrtc.RTCSessionDescription(msg)
-          );
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-
-          ws.send(JSON.stringify(peerConnection.localDescription));
-          break;
-        }
-
-        case "candidate": {
-          await peerConnection.addIceCandidate(
-            new wrtc.RTCIceCandidate(msg.candidate)
-          );
-
-          break;
-        }
-
-        case "object-detection": {
-          Max && Max.outlet(msg);
-          break;
-        }
-
-        default: {
-          console.warn("Unknown message type:", msg.type);
-          break;
-        }
+      case "connecting": {
+        break;
       }
-    });
-
-    ws.on("close", () => {
-      console.log("WebSocket closed");
-      const conn = connectedPeers.get(ws);
-      if (conn) {
-        conn.dataChannel.close();
-        conn.peerConnection.close();
+      case "connected": {
+        break;
       }
-      connectedPeers.delete(ws);
-      client.destroy();
-    });
+      case "failed": {
+        pc.close();
+        peers.delete(msg.from);
+        console.log(
+          `❗ Peer connection for ${msg.from} closed due to connectionState: ${pc.connectionState}`
+        );
+        break;
+      }
+      case "disconnected": {
+        pc.close();
+        peers.delete(msg.from);
+        console.log(
+          `❗ Peer connection for ${msg.from} closed due to connectionState: ${pc.connectionState}`
+        );
+
+        break;
+      }
+      case "closed": {
+        pc.close();
+        peers.delete(msg.from);
+        console.log(
+          `❗ Peer connection for ${msg.from} closed due to connectionState: ${pc.connectionState}`
+        );
+
+        break;
+      }
+      default: {
+        console.warn("Unknown connection state");
+        break;
+      }
+    }
+  };
+
+  const client = new net.Socket();
+
+  pc.ontrack = (event) => {
+    console.log("📹 Got track from client", event.track.kind);
+    const [track] = event.streams[0].getVideoTracks();
+    const sink = new wrtc.nonstandard.RTCVideoSink(track);
+    let lastFrame = 0;
+    const minInterval = 1000 / 25;
+
+    client
+      .connect(msg.jitRecvPort)
+      .on("connect", () => {
+        sink.onframe = ({ frame }) => {
+          const { width, height, data, rotation } = frame;
+          // console.log(rotation); // 0, 90, 180, 270
+
+          const now = performance.now();
+          if (now - lastFrame < minInterval) return;
+          lastFrame = now;
+
+          // Frame is in I420 format, convert to RGBA
+          const rgbaBuffer = new Uint8Array(width * height * 4); // 4 bytes per pixel
+          wrtc.nonstandard.i420ToRgba(
+            {
+              width,
+              height,
+              data, // I420 raw data
+            },
+            {
+              width,
+              height,
+              data: rgbaBuffer,
+            }
+          );
+
+          const rotated = rotateRGBA(rgbaBuffer, width, height, rotation);
+
+          const buffer = rgbaBufferToMatrix({
+            width: rotated.width,
+            height: rotated.height,
+            data: rotated.data,
+          });
+
+          client.write(buffer);
+        };
+      })
+      .on("error", (err) => {
+        console.error(
+          `❌ [jit.net.recv @port ${msg.jitRecvPort}] connection error`
+        );
+      });
+  };
+
+  peers.set(msg.from, { pc: pc, jitRecvPort: msg.jitRecvPort, client });
+  console.log(`👏 socket.id ${msg.from} join, current peers ${peers.size}`);
+
+  dataChannel.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    switch (msg.type) {
+      case "object-detection": {
+        Max && Max.outlet(msg);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  };
+});
+
+socket.on(
+  "signal",
+  async ({
+    from,
+    description,
+    candidate,
+  }: {
+    from: string;
+    description: wrtc.RTCSessionDescription;
+    candidate: wrtc.RTCIceCandidate;
+  }) => {
+    const pc = peers.get(from)?.pc;
+    if (!pc) return;
+
+    if (description) {
+      if (description.type === "answer") {
+        await pc.setRemoteDescription(description);
+      }
+    } else if (candidate) {
+      await pc.addIceCandidate(candidate);
+    }
+  }
+);
+
+socket.on("requestOffer", async ({ from }) => {
+  const pc = peers.get(from)?.pc;
+  if (pc) {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    socket.emit("signal", { description: pc.localDescription, to: from });
+  }
+});
+
+socket.on("userLeft", (msg) => {
+  const peer = peers.get(msg.from);
+  if (peer) {
+    peer.pc.close(); // close RTCPeerConnection
+    peer.client?.destroy(); // close net socket client
+    peers.delete(msg.from);
+  }
+  console.log(`👋 socket.id ${msg.from} left, current peers ${peers.size}`);
+});
+
+socket.on("disconnect", () => {
+  console.log("socket disconnect");
+  peers.forEach((peer) => {
+    peer.pc.close();
+    peer.client?.destroy(); // close net socket client
   });
+  peers.clear();
+});
+
+socket.on("error", (err) => {
+  console.error("SocketIO server error:", err.message);
+  peers.clear();
+});
+
+socket.on("connect_error", (err) => {
+  console.error("SocketIO server connect error:", err.message);
+  peers.clear();
+});
 
 const socketServer = net.createServer((socket) => {
   const decodeJitMatrix = new DecodeJitMatrix();
 
+  let lastPush = 0;
+  const minInterval = 1000 / 25;
+
   socket
     .pipe(decodeJitMatrix) // buffer to {data, dim, ...}
-    .pipe(grgbtorgb) //  transfrom object to jpeg buffer
+    .pipe(grgbtorgba) //  transfrom object to rgba buffer
     .on("data", (parsedBuffer: ParsedBuffer) => {
       const now = performance.now();
-      // Not sure if this is needed
-      // tell [jit.net.send] a frame is received
-      const { time: clientTime, serverStart } = parsedBuffer;
+
+      const { time: clientTime, serverStart, data, dim } = parsedBuffer;
       const jmlpBuffer = createJMLPBuffer(clientTime, serverStart, now);
-      socket.write(jmlpBuffer);
+      socket.write(jmlpBuffer); // Not sure if this is needed to tell [jit.net.send] a frame is received
 
       try {
-        for (const [, { dataChannel }] of connectedPeers.entries()) {
-          if (dataChannel.readyState === "open") {
-            dataChannel.send(parsedBuffer.data);
-          }
-        }
+        if (now - lastPush < minInterval) return;
+        lastPush = now;
+
+        const sourceFrame = {
+          width: dim[1],
+          height: dim[2],
+          data: data,
+        }; //rgba
+
+        const i420Frame = {
+          width: dim[1],
+          height: dim[2],
+          data: new Uint8Array(1.5 * dim[1] * dim[2]),
+        };
+        wrtc.nonstandard.rgbaToI420(sourceFrame, i420Frame);
+
+        videoSource.onFrame(i420Frame);
       } catch (err) {
-        console.error("Datachannel Error:", err);
+        console.error("Error:", err);
       }
     });
 });

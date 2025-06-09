@@ -102,14 +102,14 @@ const YOLO_LABELS = [
     // device: "wasm", //default
     device: "webgpu",
     progress_callback: (info) => {
-      // console.log("Model loading progress:", info);
+      self.postMessage({ modelInfo: info });
     },
   });
 
   const processor = await AutoProcessor.from_pretrained(
     "onnx-community/yolov10n",
     {
-      device: "webgpu",
+      device: ["webgpu"],
     }
   );
   console.log("Worker initialized");
@@ -132,7 +132,7 @@ const YOLO_LABELS = [
       pixel_values.dispose();
       output0.dispose();
 
-      const threshold = 0.4;
+      const threshold = 0.5;
       const [newHeight, newWidth] = reshaped_input_sizes[0]; // Reshaped height and width
       const [xs, ys] = [image.width / newWidth, image.height / newHeight]; // x and y resize scales
 

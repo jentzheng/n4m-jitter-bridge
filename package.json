@@ -4,7 +4,7 @@
   "main": "dist/jitter-bridge.js",
   "scripts": {
     "start": "node dist/jitter-bridge.js",
-    "dev": "tsx --watch src/jitter-bridge.ts --server-port=7474 --wss-port=8080",
+    "dev": "tsx watch src/jitter-bridge.ts --server-port=7474",
     "build": "tsc -p tsconfig-build.json",
     "build:watch": "tsc -p tsconfig-build.json --watch",
     "test": "tsx --test --watch"
@@ -19,8 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "@roamhq/wrtc": "^0.8.0",
-    "sharp": "^0.33.5",
-    "ws": "^8.18.2"
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@types/max-api": "^2.0.0",

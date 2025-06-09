@@ -1,5 +1,5 @@
 import { Transform, TransformCallback } from "node:stream";
-import sharp from "sharp";
+import wrtc from "@roamhq/wrtc";
 
 export type ParsedBuffer = {
   time: number;
@@ -60,7 +60,6 @@ export class DecodeJitMatrix extends Transform {
           break;
         }
         // console.log("loaded:", this.buffer.length, totalMatrixPacketSize);
-
         const matrixData = this.buffer.subarray(
           totalHeaderChunkSize,
           totalMatrixPacketSize
@@ -84,7 +83,7 @@ export class DecodeJitMatrix extends Transform {
   }
 }
 
-export const grgbtorgb = new Transform({
+export const grgbtorgba = new Transform({
   writableObjectMode: true,
   readableObjectMode: true,
   async transform(chunk: ParsedBuffer, _encoding, callback) {
@@ -92,105 +91,41 @@ export const grgbtorgb = new Transform({
     const [_planecount, width, height] = dim;
 
     const restoredWidth = width * 2;
-    const rgbBuffer = Buffer.alloc(restoredWidth * height * 3);
+    const rgbaBuffer = Buffer.alloc(restoredWidth * height * 4);
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const grgbIndex = (y * width + x) * 4;
-        const rgbIndex = (y * restoredWidth + x * 2) * 3;
+        const rgbaIndex = (y * restoredWidth + x * 2) * 4;
 
         const gLeft = grgbBuffer[grgbIndex];
         const r = grgbBuffer[grgbIndex + 1];
         const gRight = grgbBuffer[grgbIndex + 2];
         const b = grgbBuffer[grgbIndex + 3];
 
-        rgbBuffer[rgbIndex] = r; // R
-        rgbBuffer[rgbIndex + 1] = gLeft; // G
-        rgbBuffer[rgbIndex + 2] = b; // B
+        rgbaBuffer[rgbaIndex] = r; // R
+        rgbaBuffer[rgbaIndex + 1] = gLeft; // G
+        rgbaBuffer[rgbaIndex + 2] = b; // B
+        rgbaBuffer[rgbaIndex + 3] = 255; // A
 
-        rgbBuffer[rgbIndex + 3] = r; // R
-        rgbBuffer[rgbIndex + 4] = gRight; // G
-        rgbBuffer[rgbIndex + 5] = b; // B
+        rgbaBuffer[rgbaIndex + 4] = r; // R
+        rgbaBuffer[rgbaIndex + 5] = gRight; // G
+        rgbaBuffer[rgbaIndex + 6] = b; // B
+        rgbaBuffer[rgbaIndex * 7] = 255; // A
       }
     }
-
-    const jpeg = await sharp(rgbBuffer, {
-      raw: {
-        width: restoredWidth,
-        height: height,
-        channels: 3,
-      },
-    })
-      .jpeg({
-        quality: 30,
-      })
-      .toBuffer();
 
     this.push({
       time,
       serverStart,
       type,
-      dim: [3, restoredWidth, height],
-      data: jpeg,
+      dim: [4, restoredWidth, height],
+      data: rgbaBuffer,
     });
 
     callback();
   },
 });
-
-export class FrameChunkEncoder extends Transform {
-  private chunkSize: number;
-  private frameCounter: number = 0;
-
-  constructor(chunkSize = 65536) {
-    super({
-      // readableObjectMode: true,
-      writableObjectMode: true,
-    });
-    this.chunkSize = chunkSize;
-  }
-
-  _transform(
-    chunk: ParsedBuffer,
-    _encoding: BufferEncoding,
-    callback: TransformCallback
-  ) {
-    const frameId = this.frameCounter++ % 0xffffffff;
-    const { data, dim } = chunk;
-    const planecount = dim[0];
-    const width = dim[1];
-    const height = dim[2];
-    const totalChunks = Math.ceil(data.length / this.chunkSize);
-
-    for (let i = 0; i < totalChunks; i++) {
-      const headerBuffer = new Uint8Array(20);
-      const view = new DataView(headerBuffer.buffer);
-      view.setUint32(0, frameId, true); // frameId
-      view.setUint16(4, i, true); // chunkIndex
-      view.setUint16(6, totalChunks, true); // totalChunks
-      view.setUint32(8, data.length, true); // total frame size
-      view.setUint8(12, planecount); // planecount
-      view.setUint16(13, width, true); // width
-      view.setUint16(15, height, true); // height
-      view.setUint8(17, 0); // reserved
-      view.setUint8(18, 0);
-      view.setUint8(19, 0);
-
-      const chunkData = data.subarray(
-        i * this.chunkSize,
-        Math.min((i + 1) * this.chunkSize, data.length)
-      );
-
-      const packet = new Uint8Array(headerBuffer.length + chunkData.length);
-      packet.set(headerBuffer, 0);
-      packet.set(chunkData, headerBuffer.length);
-
-      this.push(packet);
-    }
-
-    callback();
-  }
-}
 
 export function createJMLPBuffer(
   clientTime: number,
@@ -205,20 +140,12 @@ export function createJMLPBuffer(
   return buffer;
 }
 
-export async function jpegBufferToMatrix(buffer: ArrayBuffer) {
-  const { data, info } = await sharp(buffer).raw().toBuffer({
-    resolveWithObject: true,
-  });
+export function rgbaBufferToMatrix(rgbaFrame: wrtc.nonstandard.RTCVideoFrame) {
+  const { width, height, data } = rgbaFrame;
 
-  const planecount = info.channels;
-  const dim = [info.width, info.height];
+  const planecount = 4; //info.channels;
+  const dim = [width, height];
 
-  // const typeMap = new Map<typeof typeStr, number>([
-  //   ["char", 0],
-  //   ["long", 1],
-  //   ["float32", 2],
-  //   ["float64", 3],
-  // ]);
   const CHUNK_ID = "JMTX";
   const header = Buffer.alloc(288);
 
@@ -253,4 +180,46 @@ export async function jpegBufferToMatrix(buffer: ArrayBuffer) {
   const packet = Buffer.concat([chunkHeader, header, data]);
 
   return packet;
+}
+
+export function rotateRGBA(
+  input: Uint8Array,
+  width: number,
+  height: number,
+  rotation: number
+): { width: number; height: number; data: Uint8Array } {
+  const outWidth = rotation === 90 || rotation === 270 ? height : width;
+  const outHeight = rotation === 90 || rotation === 270 ? width : height;
+  const output = new Uint8Array(outWidth * outHeight * 4); // RGBA
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const srcIndex = (y * width + x) * 4;
+      let dstX = x,
+        dstY = y;
+
+      if (rotation === 90) {
+        dstX = height - 1 - y;
+        dstY = x;
+      } else if (rotation === 180) {
+        dstX = width - 1 - x;
+        dstY = height - 1 - y;
+      } else if (rotation === 270) {
+        dstX = y;
+        dstY = width - 1 - x;
+      }
+
+      const dstIndex = (dstY * outWidth + dstX) * 4;
+      output[dstIndex] = input[srcIndex];
+      output[dstIndex + 1] = input[srcIndex + 1];
+      output[dstIndex + 2] = input[srcIndex + 2];
+      output[dstIndex + 3] = input[srcIndex + 3];
+    }
+  }
+
+  return {
+    width: outWidth,
+    height: outHeight,
+    data: output,
+  };
 }
