@@ -10,9 +10,14 @@ export const CameraRoute = () => {
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
 
   const resolutions = [
-    { label: "HD (1280x720)", width: 1280, height: 720 },
-    { label: "SD (640x480)", width: 640, height: 480 },
-    { label: "Low (320x240)", width: 320, height: 240 },
+    {
+      label: "FHD (1920x1080)",
+      width: { exact: 1920 },
+      height: { exact: 1080 },
+    },
+    { label: "HD (1280x720)", width: { exact: 1280 }, height: { exact: 720 } },
+    { label: "SD (640x480)", width: { exact: 640 }, height: { exact: 480 } },
+    { label: "Low (320x240)", width: { exact: 320 }, height: { exact: 240 } },
   ];
 
   const [selectedResolution, setSelectedResolution] = useState(resolutions[0]);
@@ -43,8 +48,8 @@ export const CameraRoute = () => {
     const mediaStream = await navigator.mediaDevices.getUserMedia({
       video: {
         deviceId: selectedDeviceId,
-        width: { exact: width },
-        height: { exact: height },
+        width,
+        height,
       },
     });
 
@@ -116,7 +121,7 @@ export const CameraRoute = () => {
           autoPlay
           playsInline
           controls={false}
-          className="block w-full max-w-full bg-black  max-h-[60vh]"
+          className="block w-full max-w-full bg-black  max-h-[60vh] pointer-events-none"
         />
         <button
           className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded"

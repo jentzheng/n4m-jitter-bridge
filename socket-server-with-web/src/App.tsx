@@ -58,12 +58,12 @@ function App() {
     if (socket?.connected) {
       disconnectSocketIO();
     } else {
-      connectSocketIO(formState); // 👈 保證這裡是最新值
+      connectSocketIO(formState);
     }
   }, [socket, disconnectSocketIO, connectSocketIO, formState]);
 
   useEffect(() => {
-    connectSocketIO(formState); // 👈 初始化也用 formState
+    connectSocketIO(formState);
   }, []);
 
   useEffect(() => {
@@ -179,10 +179,8 @@ function App() {
 
         {/* Main Layout */}
         <div className="drawer-content flex flex-col max-h-screen">
-          {/* Hamburger Icon for small screens */}
-
           {/* Header: hamburger + nav links */}
-          <div className="flex items-center gap-4 px-4 py-2 border-b bg-base-100">
+          <header className="flex items-center gap-4 px-4 py-2  bg-base-100">
             <label
               htmlFor="sidebar-toggle"
               className="btn btn-square btn-ghost lg:hidden"
@@ -226,7 +224,7 @@ function App() {
                 Camera
               </NavLink>
             </nav>
-          </div>
+          </header>
 
           {/* Main Content */}
           <main className="bg-gray-600 flex-1 overflow-auto">
@@ -235,7 +233,7 @@ function App() {
         </div>
 
         {/* Sidebar */}
-        <div className="drawer-side">
+        <aside className="drawer-side">
           <label htmlFor="sidebar-toggle" className="drawer-overlay"></label>
           <div className="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
             <form action={handleConnect}>
@@ -284,7 +282,7 @@ function App() {
               <li>ConnectionState: {connectionState.connectionState}</li>
             </ul>
           </div>
-        </div>
+        </aside>
       </div>
     </ConnectionContext.Provider>
   );
