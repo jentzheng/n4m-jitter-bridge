@@ -1,63 +1,38 @@
-import { Server } from "socket.io";
 import http from "node:http";
 import express from "express";
 import { createServer as createViteServer } from "vite";
+import createSocketIOServer from "./socketIO";
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: ["https://admin.socket.io", "http://localhost:8080"],
-    credentials: true,
-  },
-});
 
-const vite = await createViteServer({
-  server: {
-    middlewareMode: true,
-    hmr: {
-      server,
+createSocketIOServer(server);
+
+const isDev = process.env.NODE_ENV !== "production";
+if (isDev) {
+  const vite = await createViteServer({
+    server: {
+      middlewareMode: true,
+      hmr: { server },
     },
-  },
-  appType: "spa",
-});
-
-app.use(vite.middlewares);
-
-app.use(express.static("static"));
-
-io.on("connection", (socket) => {
-  const { name, role, roomId, jitRecvPort } = socket.handshake.query as {
-    name: string;
-    role: string;
-    roomId: string;
-    jitRecvPort: string;
-  };
-
-  socket.on("join", async () => {
-    socket.join(roomId);
-    socket
-      .to(roomId)
-      .emit("newUser", { from: socket.id, name, role, jitRecvPort });
-    console.log(`name: ${name} joined room: ${roomId}`);
+    appType: "spa",
   });
+  app.use(vite.middlewares);
+} else {
+  app.use(express.static("dist"));
+}
 
-  socket.on("signal", ({ to, description, candidate }) => {
-    socket.to(to).emit("signal", { from: socket.id, description, candidate });
-  });
+app.use(express.static("public"));
 
-  socket.on("requestOffer", ({ to }) => {
-    socket.to(to).emit("requestOffer", { from: socket.id });
-  });
-
-  socket.on("disconnecting", () => {
-    socket.rooms.forEach((room) => {
-      socket.to(room).emit("userLeft", { from: socket.id });
-      console.log(`user ${socket.id} disconnecting from ${room}`);
-    });
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received. Closing server...");
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
   });
 });
 
-server.listen(8080, () => {
-  console.log(`Example app listening at http://localhost:8080`);
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
 });

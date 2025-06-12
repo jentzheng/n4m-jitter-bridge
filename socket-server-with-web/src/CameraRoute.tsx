@@ -50,6 +50,7 @@ export const CameraRoute = () => {
         deviceId: selectedDeviceId,
         width,
         height,
+        facingMode,
       },
     });
 
@@ -124,7 +125,7 @@ export const CameraRoute = () => {
           className="block w-full max-w-full bg-black  max-h-[60vh] pointer-events-none"
         />
         <button
-          className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded"
+          className="btn absolute top-2 right-2 "
           onClick={handleFullscreen}
         >
           Fullscreen

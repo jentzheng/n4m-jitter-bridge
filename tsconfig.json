@@ -4,11 +4,11 @@
     "module": "commonjs",
     "noImplicitAny": false,
     "strict": true,
-    "incremental": true,
+    "incremental": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "moduleResolution": "node",
-    "outDir": "dist"
+    "outDir": "javascript"
   },
   "include": ["src", "test"]
 }

@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "main": "dist/jitter-bridge.js",
   "scripts": {
-    "start": "node dist/jitter-bridge.js",
+    "start": "node javascript/jitter-bridge.js",
     "dev": "tsx watch src/jitter-bridge.ts --server-port=7474",
-    "build": "tsc -p tsconfig-build.json",
-    "build:watch": "tsc -p tsconfig-build.json --watch",
-    "test": "tsx --test --watch"
+    "build": "tsc",
+    "build:watch": "tsc --watch"
   },
   "keywords": [
     "max",

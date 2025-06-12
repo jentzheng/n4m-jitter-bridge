@@ -11,15 +11,15 @@ const root = document.getElementById("root");
 
 if (root) {
   createRoot(root).render(
-    // <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />}>
-          <Route index element={<DetectionRoute />} />
-          <Route path="camera" element={<CameraRoute />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-    // </StrictMode>
+    <StrictMode>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<App />}>
+            <Route index element={<DetectionRoute />} />
+            <Route path="camera" element={<CameraRoute />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </StrictMode>
   );
 }

@@ -2,11 +2,11 @@ import net from "node:net";
 import wrtc from "@roamhq/wrtc";
 import {
   DecodeJitMatrix,
-  grgbtorgba,
   createJMLPBuffer,
   ParsedBuffer,
-  rgbaBufferToMatrix,
-  rotateRGBA,
+  uyvytoi420,
+  i420ToUYVYBufferWithRotation,
+  bufferToMatrix,
 } from "./utils";
 import { io } from "socket.io-client";
 
@@ -21,7 +21,7 @@ const config = {
     ?.split("=")[1],
   remoteServer:
     process.argv.find((v) => v.includes("--remote-server"))?.split("=")[1] ||
-    "http://localhost:8080",
+    "http://localhost:5173",
   roomId:
     process.argv.find((v) => v.includes("--roomID"))?.split("=")[1] ||
     "MaxMSPJitter",
@@ -29,7 +29,7 @@ const config = {
 
 console.log(config);
 
-const socket = io("http://localhost:8080", {
+const socket = io(config.remoteServer, {
   query: {
     name: "jitter-bridge-n4m",
     role: "host",
@@ -136,35 +136,25 @@ socket.on("newUser", async (msg) => {
         sink.onframe = ({ frame }) => {
           const { width, height, data, rotation } = frame;
           // console.log(rotation); // 0, 90, 180, 270
-
-          const now = performance.now();
-          if (now - lastFrame < minInterval) return;
-          lastFrame = now;
-
-          // Frame is in I420 format, convert to RGBA
-          const rgbaBuffer = new Uint8Array(width * height * 4); // 4 bytes per pixel
-          wrtc.nonstandard.i420ToRgba(
+          // const now = performance.now();
+          // if (now - lastFrame < minInterval) return;
+          // lastFrame = now;
+          const uyuyBuffer = i420ToUYVYBufferWithRotation(
             {
-              width,
-              height,
-              data, // I420 raw data
+              width: width,
+              height: height,
+              data: data,
+              rotation
             },
-            {
-              width,
-              height,
-              data: rgbaBuffer,
-            }
           );
 
-          const rotated = rotateRGBA(rgbaBuffer, width, height, rotation);
-
-          const buffer = rgbaBufferToMatrix({
-            width: rotated.width,
-            height: rotated.height,
-            data: rotated.data,
+          const matrixBuffer = bufferToMatrix({
+            data: uyuyBuffer.data,
+            width: uyuyBuffer.width / 2,
+            height: uyuyBuffer.height,
           });
 
-          client.write(buffer);
+          client.write(matrixBuffer);
         };
       })
       .on("error", (err) => {
@@ -261,7 +251,7 @@ const socketServer = net.createServer((socket) => {
 
   socket
     .pipe(decodeJitMatrix) // buffer to {data, dim, ...}
-    .pipe(grgbtorgba) //  transfrom object to rgba buffer
+    .pipe(uyvytoi420) //  transfrom object to i420 buffer
     .on("data", (parsedBuffer: ParsedBuffer) => {
       const now = performance.now();
 
@@ -269,27 +259,7 @@ const socketServer = net.createServer((socket) => {
       const jmlpBuffer = createJMLPBuffer(clientTime, serverStart, now);
       socket.write(jmlpBuffer); // Not sure if this is needed to tell [jit.net.send] a frame is received
 
-      try {
-        if (now - lastPush < minInterval) return;
-        lastPush = now;
-
-        const sourceFrame = {
-          width: dim[1],
-          height: dim[2],
-          data: data,
-        }; //rgba
-
-        const i420Frame = {
-          width: dim[1],
-          height: dim[2],
-          data: new Uint8Array(1.5 * dim[1] * dim[2]),
-        };
-        wrtc.nonstandard.rgbaToI420(sourceFrame, i420Frame);
-
-        videoSource.onFrame(i420Frame);
-      } catch (err) {
-        console.error("Error:", err);
-      }
+      videoSource.onFrame({ data, width: dim[1], height: dim[2] });
     });
 });
 

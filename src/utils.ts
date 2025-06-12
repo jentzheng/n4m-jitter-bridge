@@ -127,6 +127,129 @@ export const grgbtorgba = new Transform({
   },
 });
 
+export const ayuvtoi420 = new Transform({
+  writableObjectMode: true,
+  readableObjectMode: true,
+  async transform(chunk: ParsedBuffer, _encoding, callback) {
+    const { time, serverStart, type, dim, data: ayuvBuffer } = chunk;
+    const [_planecount, width, height] = dim;
+
+    const frameSize = width * height;
+    const yPlane = new Uint8Array(frameSize);
+    const uPlane = new Uint8Array(frameSize >> 2);
+    const vPlane = new Uint8Array(frameSize >> 2);
+
+    let uIndex = 0;
+    let vIndex = 0;
+
+    for (let y = 0; y < height; y += 2) {
+      for (let x = 0; x < width; x += 2) {
+        let uSum = 0,
+          vSum = 0;
+
+        for (let dy = 0; dy < 2; dy++) {
+          for (let dx = 0; dx < 2; dx++) {
+            const px = x + dx;
+            const py = y + dy;
+            const pixelIndex = (py * width + px) * 4;
+            const yIndex = py * width + px;
+
+            yPlane[yIndex] = ayuvBuffer[pixelIndex + 1]; // Y
+            uSum += ayuvBuffer[pixelIndex + 2]; // U
+            vSum += ayuvBuffer[pixelIndex + 3]; // V
+          }
+        }
+
+        uPlane[uIndex++] = uSum >> 2;
+        vPlane[vIndex++] = vSum >> 2;
+      }
+    }
+
+    const i420buffer = new Uint8Array(frameSize + (frameSize >> 1));
+    i420buffer.set(yPlane, 0);
+    i420buffer.set(uPlane, frameSize);
+    i420buffer.set(vPlane, frameSize + (frameSize >> 2));
+
+    this.push({
+      time,
+      serverStart,
+      type: "i420",
+      dim: [4, width, height],
+      data: i420buffer,
+    });
+
+    callback();
+  },
+});
+
+export const uyvytoi420 = new Transform({
+  writableObjectMode: true,
+  readableObjectMode: true,
+
+  async transform(chunk: ParsedBuffer, _encoding, callback) {
+    const { time, serverStart, type, dim, data: uyvyBuffer } = chunk;
+    // Jitter output: [planecount=4, width/2, height]
+    const [_planecount, compressedWidth, height] = dim;
+    const width = compressedWidth * 2; // restore width
+
+    const frameSize = width * height;
+    const yPlane = new Uint8Array(frameSize);
+    const uPlane = new Uint8Array(frameSize >> 2);
+    const vPlane = new Uint8Array(frameSize >> 2);
+
+    let uIndex = 0;
+    let vIndex = 0;
+
+    for (let y = 0; y < height; y += 2) {
+      for (let x = 0; x < width; x += 2) {
+        let uSum = 0,
+          vSum = 0;
+
+        for (let dy = 0; dy < 2; dy++) {
+          const py = y + dy;
+          const rowStart = py * width * 2;
+
+          for (let dx = 0; dx < 2; dx++) {
+            const px = x + dx;
+            const pairIndex = Math.floor(px / 2) * 4;
+            const byteIndex = rowStart + pairIndex;
+
+            const yIndex = py * width + px;
+
+            if (px % 2 === 0) {
+              yPlane[yIndex] = uyvyBuffer[byteIndex + 1];
+              uSum += uyvyBuffer[byteIndex + 0];
+              vSum += uyvyBuffer[byteIndex + 2];
+            } else {
+              yPlane[yIndex] = uyvyBuffer[byteIndex + 3];
+              uSum += uyvyBuffer[byteIndex + 0];
+              vSum += uyvyBuffer[byteIndex + 2];
+            }
+          }
+        }
+
+        uPlane[uIndex++] = uSum >> 2;
+        vPlane[vIndex++] = vSum >> 2;
+      }
+    }
+
+    const i420buffer = new Uint8Array(frameSize + (frameSize >> 1));
+    i420buffer.set(yPlane, 0);
+    i420buffer.set(uPlane, frameSize);
+    i420buffer.set(vPlane, frameSize + (frameSize >> 2));
+
+    this.push({
+      time,
+      serverStart,
+      type: "i420",
+      dim: [4, width, height],
+      data: i420buffer,
+    });
+
+    callback();
+  },
+});
+
 export function createJMLPBuffer(
   clientTime: number,
   serverStart: number,
@@ -140,8 +263,8 @@ export function createJMLPBuffer(
   return buffer;
 }
 
-export function rgbaBufferToMatrix(rgbaFrame: wrtc.nonstandard.RTCVideoFrame) {
-  const { width, height, data } = rgbaFrame;
+export function bufferToMatrix(frame: wrtc.nonstandard.RTCVideoFrame) {
+  const { width, height, data } = frame;
 
   const planecount = 4; //info.channels;
   const dim = [width, height];
@@ -182,44 +305,111 @@ export function rgbaBufferToMatrix(rgbaFrame: wrtc.nonstandard.RTCVideoFrame) {
   return packet;
 }
 
-export function rotateRGBA(
-  input: Uint8Array,
-  width: number,
-  height: number,
-  rotation: number
-): { width: number; height: number; data: Uint8Array } {
-  const outWidth = rotation === 90 || rotation === 270 ? height : width;
-  const outHeight = rotation === 90 || rotation === 270 ? width : height;
-  const output = new Uint8Array(outWidth * outHeight * 4); // RGBA
+export function i420ToUYVYBufferWithRotation(i420: {
+  width: number;
+  height: number;
+  data: Uint8Array;
+  rotation: 0 | 90 | 180 | 270;
+}): { data: Uint8Array; width: number; height: number } {
+  const { width, height, data, rotation } = i420;
+  const ySize = width * height;
+  const uSize = ySize >> 2;
+
+  const yPlane = data.subarray(0, ySize);
+  const uPlane = data.subarray(ySize, ySize + uSize);
+  const vPlane = data.subarray(ySize + uSize);
+
+  const uyvyBuffer = new Uint8Array(width * height * 2); // 2 bytes per pixel
+
+  let index = 0;
 
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const srcIndex = (y * width + x) * 4;
-      let dstX = x,
-        dstY = y;
+    const rowY = y * width;
+    const rowUV = (y >> 1) * (width >> 1);
+
+    for (let x = 0; x < width; x += 2) {
+      const y0 = yPlane[rowY + x];
+      const y1 = yPlane[rowY + x + 1];
+
+      const uvOffset = rowUV + (x >> 1);
+      const u = uPlane[uvOffset];
+      const v = vPlane[uvOffset];
+
+      uyvyBuffer[index++] = u;
+      uyvyBuffer[index++] = y0;
+      uyvyBuffer[index++] = v;
+      uyvyBuffer[index++] = y1;
+    }
+  }
+
+  // 🔄 rotation (on final buffer)
+  const rotated = rotateUYVY(uyvyBuffer, width, height, rotation);
+
+  return rotated;
+}
+
+function rotateUYVY(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  rotation: 0 | 90 | 180 | 270
+) {
+  if (rotation === 0) {
+    return { data, width, height };
+  }
+
+  const pitch = width * 2;
+  const newWidth = rotation === 90 || rotation === 270 ? height : width;
+  const newHeight = rotation === 90 || rotation === 270 ? width : height;
+  const newPitch = newWidth * 2;
+
+  const rotated = new Uint8Array(data.length);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x += 2) {
+      const srcOffset = y * pitch + x * 2;
+
+      // read UYVY (4 bytes for 2 pixels)
+      const u = data[srcOffset];
+      const y0 = data[srcOffset + 1];
+      const v = data[srcOffset + 2];
+      const y1 = data[srcOffset + 3];
+
+      // rotate position
+      let dstX0, dstY0, dstX1, dstY1;
 
       if (rotation === 90) {
-        dstX = height - 1 - y;
-        dstY = x;
+        dstX0 = height - y - 1;
+        dstY0 = x;
+        dstX1 = height - y - 1;
+        dstY1 = x + 1;
       } else if (rotation === 180) {
-        dstX = width - 1 - x;
-        dstY = height - 1 - y;
+        dstX0 = width - x - 2;
+        dstY0 = height - y - 1;
+        dstX1 = width - x - 1;
+        dstY1 = height - y - 1;
       } else if (rotation === 270) {
-        dstX = y;
-        dstY = width - 1 - x;
+        dstX0 = y;
+        dstY0 = width - x - 2;
+        dstX1 = y;
+        dstY1 = width - x - 1;
       }
 
-      const dstIndex = (dstY * outWidth + dstX) * 4;
-      output[dstIndex] = input[srcIndex];
-      output[dstIndex + 1] = input[srcIndex + 1];
-      output[dstIndex + 2] = input[srcIndex + 2];
-      output[dstIndex + 3] = input[srcIndex + 3];
+      // write first pixel
+      let dstOffset0 = dstY0 * newPitch + dstX0 * 2;
+      rotated[dstOffset0] = u;
+      rotated[dstOffset0 + 1] = y0;
+
+      // write second pixel
+      let dstOffset1 = dstY1 * newPitch + dstX1 * 2;
+      rotated[dstOffset1] = v;
+      rotated[dstOffset1 + 1] = y1;
     }
   }
 
   return {
-    width: outWidth,
-    height: outHeight,
-    data: output,
+    data: rotated,
+    width: newWidth,
+    height: newHeight,
   };
 }

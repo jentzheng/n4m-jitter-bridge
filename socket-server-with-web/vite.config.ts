@@ -1,33 +1,37 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import { viteSingleFile } from "vite-plugin-singlefile";
 import tailwindcss from "@tailwindcss/vite";
-import fs from "fs";
-import path from "path";
 import basicSsl from "@vitejs/plugin-basic-ssl";
+import CreateSocketIOServer from "./socketIO";
+
+function socketIOPlugin(): Plugin {
+  return {
+    name: "socket-io",
+    configureServer(server) {
+      if (!server.httpServer) return;
+      CreateSocketIOServer(server.httpServer);
+    },
+    configurePreviewServer(server) {
+      if (!server.httpServer) return;
+      CreateSocketIOServer(server.httpServer);
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: "./",
   assetsInclude: ["**/*.onnx"],
   optimizeDeps: {
     exclude: ["onnxruntime-web"],
   },
   server: {
     host: true,
-    // https: {
-    //   key: fs.readFileSync(path.resolve(__dirname, "certs/localhost-key.pem")),
-    //   cert: fs.readFileSync(
-    //     path.resolve(__dirname, "certs/localhost-cert.pem")
-    //   ),
-    // },
     allowedHosts: [".trycloudflare.com"],
   },
-  build: {},
   plugins: [
     react(),
     tailwindcss(),
-    // basicSsl(),
-    // viteSingleFile({ removeViteModuleLoader: true }),
+    socketIOPlugin(),
+    process.env.SELF_SIGN_SSL === "true" && basicSsl(),
   ],
 });

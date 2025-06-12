@@ -56,19 +56,24 @@ export const DetectionRoute = () => {
     }
 
     let rid = 0;
-    let isRunning = true;
 
     async function captureLoop() {
-      if (!isRunning || !video || !canvas || !ctx) return;
-
+      if (!video || !canvas || !ctx) return;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
       ctx.drawImage(video, 0, 0);
-      drawResult(ctx);
 
-      const bitmap = await createImageBitmap(canvas);
-      detectorWorker.postMessage(bitmap, [bitmap]);
+      const rawImage = {
+        data: ctx.getImageData(0, 0, canvas.width, canvas.height).data,
+        width: canvas.width,
+        height: canvas.height,
+        channels: 4,
+      };
+
+      detectorWorker.postMessage(rawImage);
+
+      drawResult(ctx);
 
       rid = requestAnimationFrame(captureLoop);
     }
@@ -78,16 +83,15 @@ export const DetectionRoute = () => {
     };
 
     detectorWorker.onmessage = (event: MessageEvent) => {
-      lastResultRef.current = event.data;
       dc.send(JSON.stringify(event.data));
+      lastResultRef.current = event.data;
     };
 
     return () => {
-      isRunning = false;
-      detectorWorker.terminate();
       cancelAnimationFrame(rid);
       detectorWorker.onmessage = null;
-      console.log("DetectionRoute unmounted");
+      detectorWorker.terminate();
+      console.info("DetectionRoute unmounted");
     };
   }, [remoteStream, detectorWorker, dc]);
 
@@ -96,7 +100,7 @@ export const DetectionRoute = () => {
       <video ref={videoEle} autoPlay playsInline muted className="hidden" />
       <canvas
         ref={canvasEle}
-        className="block max-w-full w-full h-auto bg-black max-h-full"
+        className="block max-w-full  w-full m-auto bg-black "
       />
     </>
   );
