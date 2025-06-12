@@ -5,7 +5,11 @@ import { Server } from "socket.io";
 export default function createSocketIOServer(
   httpServer: http.Server | Http2SecureServer
 ) {
-  const io = new Server(httpServer);
+  const io = new Server(httpServer, {
+    cors: {
+      origin: "*",
+    },
+  });
 
   io.on("connection", (socket) => {
     const { name, role, roomId, jitRecvPort } = socket.handshake.query as {

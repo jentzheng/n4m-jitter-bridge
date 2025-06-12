@@ -305,111 +305,44 @@ export function bufferToMatrix(frame: wrtc.nonstandard.RTCVideoFrame) {
   return packet;
 }
 
-export function i420ToUYVYBufferWithRotation(i420: {
-  width: number;
-  height: number;
-  data: Uint8Array;
-  rotation: 0 | 90 | 180 | 270;
-}): { data: Uint8Array; width: number; height: number } {
-  const { width, height, data, rotation } = i420;
-  const ySize = width * height;
-  const uSize = ySize >> 2;
-
-  const yPlane = data.subarray(0, ySize);
-  const uPlane = data.subarray(ySize, ySize + uSize);
-  const vPlane = data.subarray(ySize + uSize);
-
-  const uyvyBuffer = new Uint8Array(width * height * 2); // 2 bytes per pixel
-
-  let index = 0;
-
-  for (let y = 0; y < height; y++) {
-    const rowY = y * width;
-    const rowUV = (y >> 1) * (width >> 1);
-
-    for (let x = 0; x < width; x += 2) {
-      const y0 = yPlane[rowY + x];
-      const y1 = yPlane[rowY + x + 1];
-
-      const uvOffset = rowUV + (x >> 1);
-      const u = uPlane[uvOffset];
-      const v = vPlane[uvOffset];
-
-      uyvyBuffer[index++] = u;
-      uyvyBuffer[index++] = y0;
-      uyvyBuffer[index++] = v;
-      uyvyBuffer[index++] = y1;
-    }
-  }
-
-  // 🔄 rotation (on final buffer)
-  const rotated = rotateUYVY(uyvyBuffer, width, height, rotation);
-
-  return rotated;
-}
-
-function rotateUYVY(
-  data: Uint8Array,
+export function rotateRGBA(
+  input: Uint8Array,
   width: number,
   height: number,
-  rotation: 0 | 90 | 180 | 270
-) {
-  if (rotation === 0) {
-    return { data, width, height };
-  }
-
-  const pitch = width * 2;
-  const newWidth = rotation === 90 || rotation === 270 ? height : width;
-  const newHeight = rotation === 90 || rotation === 270 ? width : height;
-  const newPitch = newWidth * 2;
-
-  const rotated = new Uint8Array(data.length);
+  rotation: number
+): { width: number; height: number; data: Uint8Array } {
+  const outWidth = rotation === 90 || rotation === 270 ? height : width;
+  const outHeight = rotation === 90 || rotation === 270 ? width : height;
+  const output = new Uint8Array(outWidth * outHeight * 4); // RGBA
 
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x += 2) {
-      const srcOffset = y * pitch + x * 2;
-
-      // read UYVY (4 bytes for 2 pixels)
-      const u = data[srcOffset];
-      const y0 = data[srcOffset + 1];
-      const v = data[srcOffset + 2];
-      const y1 = data[srcOffset + 3];
-
-      // rotate position
-      let dstX0, dstY0, dstX1, dstY1;
+    for (let x = 0; x < width; x++) {
+      const srcIndex = (y * width + x) * 4;
+      let dstX = x,
+        dstY = y;
 
       if (rotation === 90) {
-        dstX0 = height - y - 1;
-        dstY0 = x;
-        dstX1 = height - y - 1;
-        dstY1 = x + 1;
+        dstX = height - 1 - y;
+        dstY = x;
       } else if (rotation === 180) {
-        dstX0 = width - x - 2;
-        dstY0 = height - y - 1;
-        dstX1 = width - x - 1;
-        dstY1 = height - y - 1;
+        dstX = width - 1 - x;
+        dstY = height - 1 - y;
       } else if (rotation === 270) {
-        dstX0 = y;
-        dstY0 = width - x - 2;
-        dstX1 = y;
-        dstY1 = width - x - 1;
+        dstX = y;
+        dstY = width - 1 - x;
       }
 
-      // write first pixel
-      let dstOffset0 = dstY0 * newPitch + dstX0 * 2;
-      rotated[dstOffset0] = u;
-      rotated[dstOffset0 + 1] = y0;
-
-      // write second pixel
-      let dstOffset1 = dstY1 * newPitch + dstX1 * 2;
-      rotated[dstOffset1] = v;
-      rotated[dstOffset1 + 1] = y1;
+      const dstIndex = (dstY * outWidth + dstX) * 4;
+      output[dstIndex] = input[srcIndex];
+      output[dstIndex + 1] = input[srcIndex + 1];
+      output[dstIndex + 2] = input[srcIndex + 2];
+      output[dstIndex + 3] = input[srcIndex + 3];
     }
   }
 
   return {
-    data: rotated,
-    width: newWidth,
-    height: newHeight,
+    width: outWidth,
+    height: outHeight,
+    data: output,
   };
 }

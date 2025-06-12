@@ -13,12 +13,13 @@ const config = {
         .find((v) => v.includes("--server-port"))
         ?.split("=")[1],
     remoteServer: process.argv.find((v) => v.includes("--remote-server"))?.split("=")[1] ||
-        "http://localhost:5173",
+        "https://localhost:5173",
     roomId: process.argv.find((v) => v.includes("--roomID"))?.split("=")[1] ||
         "MaxMSPJitter",
 };
 console.log(config);
 const socket = (0, socket_io_client_1.io)(config.remoteServer, {
+    rejectUnauthorized: false,
     query: {
         name: "jitter-bridge-n4m",
         role: "host",
@@ -98,21 +99,28 @@ socket.on("newUser", async (msg) => {
             sink.onframe = ({ frame }) => {
                 const { width, height, data, rotation } = frame;
                 // console.log(rotation); // 0, 90, 180, 270
-                // const now = performance.now();
-                // if (now - lastFrame < minInterval) return;
-                // lastFrame = now;
-                const uyuyBuffer = (0, utils_1.i420ToUYVYBufferWithRotation)({
-                    width: width,
-                    height: height,
-                    data: data,
-                    rotation
+                const now = performance.now();
+                if (now - lastFrame < minInterval)
+                    return;
+                lastFrame = now;
+                // Frame is in I420 format, convert to RGBA
+                const rgbaBuffer = new Uint8Array(width * height * 4); // 4 bytes per pixel
+                wrtc_1.default.nonstandard.i420ToRgba({
+                    width,
+                    height,
+                    data, // I420 raw data
+                }, {
+                    width,
+                    height,
+                    data: rgbaBuffer,
                 });
-                const matrixBuffer = (0, utils_1.bufferToMatrix)({
-                    data: uyuyBuffer.data,
-                    width: uyuyBuffer.width / 2,
-                    height: uyuyBuffer.height,
+                const rotated = (0, utils_1.rotateRGBA)(rgbaBuffer, width, height, rotation);
+                const buffer = (0, utils_1.bufferToMatrix)({
+                    width: rotated.width,
+                    height: rotated.height,
+                    data: rotated.data,
                 });
-                client.write(matrixBuffer);
+                client.write(buffer);
             };
         })
             .on("error", (err) => {

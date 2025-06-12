@@ -10,13 +10,71 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 922.0, 100.0, 772.0, 983.0 ],
+		"rect" : [ 591.0, 100.0, 1103.0, 983.0 ],
 		"gridonopen" : 2,
 		"gridsize" : [ 8.0, 8.0 ],
 		"gridsnaponopen" : 2,
 		"objectsnaponopen" : 0,
 		"subpatcher_template" : "snap_to_grid_template",
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-48",
+					"maxclass" : "jit.pwindow",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "jit_matrix", "" ],
+					"patching_rect" : [ 832.0, 168.0, 160.0, 120.0 ],
+					"prototypename" : "160by120_uyvy",
+					"sync" : 0
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontface" : 0,
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-47",
+					"maxclass" : "jit.fpsgui",
+					"mode" : 4,
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"patching_rect" : [ 928.0, 48.0, 56.0, 35.0 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontface" : 0,
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-28",
+					"maxclass" : "jit.fpsgui",
+					"mode" : 3,
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"patching_rect" : [ 848.0, 128.0, 72.0, 35.0 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontface" : 0,
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-15",
+					"maxclass" : "jit.fpsgui",
+					"mode" : 3,
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"patching_rect" : [ 848.0, 48.0, 72.0, 35.0 ]
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"fontface" : 0,
 					"fontname" : "Arial",
@@ -38,8 +96,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "jit_matrix", "" ],
-					"patching_rect" : [ 832.0, 48.0, 76.0, 22.0 ],
-					"text" : "jit.uyvy2argb"
+					"patching_rect" : [ 832.0, 96.0, 161.0, 22.0 ],
+					"text" : "jit.matrix @planemap 3 0 1 2"
 				}
 
 			}
@@ -50,8 +108,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "jit_matrix", "" ],
-					"patching_rect" : [ 600.0, 88.0, 76.0, 22.0 ],
-					"text" : "jit.uyvy2argb"
+					"patching_rect" : [ 600.0, 88.0, 161.0, 22.0 ],
+					"text" : "jit.matrix @planemap 3 0 1 2"
 				}
 
 			}
@@ -115,19 +173,6 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "jit_matrix", "" ],
 					"patching_rect" : [ 48.0, 264.0, 144.0, 96.0 ],
-					"prototypename" : "160by120_uyvy",
-					"sync" : 0
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-60",
-					"maxclass" : "jit.pwindow",
-					"numinlets" : 1,
-					"numoutlets" : 2,
-					"outlettype" : [ "jit_matrix", "" ],
-					"patching_rect" : [ 832.0, 168.0, 160.0, 120.0 ],
 					"prototypename" : "160by120_uyvy",
 					"sync" : 0
 				}
@@ -845,13 +890,13 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-29",
-					"linecount" : 4,
+					"linecount" : 3,
 					"maxclass" : "message",
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 272.0, 160.0, 224.0, 62.0 ],
-					"text" : "script start --remote-server=http://localhost:5173 --roomID=MaxMSPJitter --server-port=7474"
+					"patching_rect" : [ 272.0, 160.0, 248.0, 49.0 ],
+					"text" : "script start --remote-server=https://localhost:5173 --roomID=MaxMSPJitter --server-port=7474"
 				}
 
 			}
@@ -1309,7 +1354,24 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-15", 0 ],
+					"order" : 1,
+					"source" : [ "obj-35", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-43", 0 ],
+					"order" : 2,
+					"source" : [ "obj-35", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-47", 0 ],
+					"order" : 0,
 					"source" : [ "obj-35", 0 ]
 				}
 
@@ -1367,7 +1429,16 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-60", 0 ],
+					"destination" : [ "obj-28", 0 ],
+					"order" : 0,
+					"source" : [ "obj-43", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-48", 0 ],
+					"order" : 1,
 					"source" : [ "obj-43", 0 ]
 				}
 
