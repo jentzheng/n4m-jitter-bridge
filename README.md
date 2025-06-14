@@ -35,10 +35,10 @@ npm install && npm run build
 
 ## Usage
 
-### Start the Node.js Bridge
+### Start the Node.js Bridge(for dev)
 
 ```sh
-node dist/jitter-bridge.js --server-port=7474 --remote-server=https://localhost:5173 --roomID=MaxMSPJitter
+npm run dev --server-port=7474 --remote-server=https://localhost:5173 --roomID=MaxMSPJitter
 ```
 
 - `--server-port`: TCP port for Jitter matrix input (from `[jit.net.send]`).
@@ -48,6 +48,7 @@ node dist/jitter-bridge.js --server-port=7474 --remote-server=https://localhost:
 ### In Max/MSP/Jitter
 
 - Open `objectdetection.maxpat`.
+- start n4m `script start --remote-server=https://localhost:5173 --roomID=MaxMSPJitter --server-port=7474`
 - Use `[jit.net.send @host 127.0.0.1 @port 7474]` to send matrix data to the bridge's TCP port.
 
 ### In the Browser
@@ -66,12 +67,8 @@ npm run dev
 > This is required because browsers only allow camera and microphone access on secure origins (HTTPS or localhost).  
 > By enabling HTTPS with a self-signed certificate, you can test remote camera capture and WebRTC features locally or on your LAN.
 
-### Real-Time Video & Detection
-
-- The browser receives video frames via WebRTC and renders them to a canvas.
-- Object detection results (if enabled) are displayed or sent back to Max/MSP.
-
 ## TODO
 
+- add p5js example
 - Add more model inference examples like YOLO-pose or YOLO-seg.
 - Support for multiple simultaneous segmentation results.
