@@ -8,10 +8,13 @@ A key component is `Transformers.js`, which leverages WebGPU for inference in th
 
 ## Features
 
-- **GRGB to RGB/JPEG Conversion**: Converts Jitter's GRGB image data to standard RGB, then encodes as JPEG for efficient transmission.
-- **Low-Latency Streaming**: Streams video frames from Jitter to browsers using WebRTC DataChannel (P2P, ultra-low latency).
-- **WebSocket Signaling**: Uses WebSocket for signaling and authentication.
+- **Jitter Matrix to WebRTC**: Streams Jitter matrix data (UYVY) from Max to browsers using WebRTC for ultra-low latency.
+- **TCP Socket Bridge**: Uses a TCP server to receive Jitter matrices from `[jit.net.send]` in Max.
+- **Automatic I420 Conversion**: Converts UYVY to I420 and then to RGBA for WebRTC video frames.
+- **WebRTC Peer Management**: Handles multiple browser clients with dynamic peer connection management.
+- **Socket.IO Signaling**: Uses Socket.IO for signaling and room management.
 - **Max/MSP Integration**: Communicates with Max/MSP using `max-api` for real-time data exchange and feedback.
+- **Object Detection Feedback**: Receives inference results from the browser and sends them back to Max.
 
 ## Installation
 
@@ -25,7 +28,6 @@ git clone https://github.com/jentzheng/n4m-jitter-bridge.git
 Install dependencies:
 
 ```sh
-// server side
 pnpm install && pnpm run build
 # or
 npm install && npm run build
@@ -33,38 +35,43 @@ npm install && npm run build
 
 ## Usage
 
-Start the Node.js Bridge
+### Start the Node.js Bridge
 
 ```sh
-node src/jitter-bridge.js --server-port=7474 --wss-port=8080 --token=mysecret
+node dist/jitter-bridge.js --server-port=7474 --remote-server=https://localhost:5173 --roomID=MaxMSPJitter
 ```
 
-In Max/MSP/Jitter
-- open `objectdetection.maxpat`
-- Use [jit.net.send] to send matrix data to the bridge's TCP port.
-- Example: [jit.net.send @host 127.0.0.1 @port 7474]
+- `--server-port`: TCP port for Jitter matrix input (from `[jit.net.send]`).
+- `--remote-server`: URL of the signaling server (default: `https://localhost:5173`).
+- `--roomID`: Room name for grouping clients (default: `MaxMSPJitter`).
 
-In the Browser
+### In Max/MSP/Jitter
+
+- Open `objectdetection.maxpat`.
+- Use `[jit.net.send @host 127.0.0.1 @port 7474]` to send matrix data to the bridge's TCP port.
+
+### In the Browser
 
 ```sh
-cd jweb/examples/vite-react-app
+cd socket-server-with-web
 npm install
-npm run build
-npx vite preview
+npm run dev
 ```
 
-- Open <http://localhost:4173> in your browser.
+- Open <https://localhost:5173> in your browser.
 - The app will auto-connect to the bridge using the current host and port.
 
-Real-Time Video & Detection
+> **Note:**  
+> The development server uses a self-signed SSL certificate (`SELF_SIGN_SSL=true`) so you can access the app over HTTPS.  
+> This is required because browsers only allow camera and microphone access on secure origins (HTTPS or localhost).  
+> By enabling HTTPS with a self-signed certificate, you can test remote camera capture and WebRTC features locally or on your LAN.
 
-- The browser receives JPEG frames via WebRTC DataChannel and renders them to a canvas.
+### Real-Time Video & Detection
+
+- The browser receives video frames via WebRTC and renders them to a canvas.
 - Object detection results (if enabled) are displayed or sent back to Max/MSP.
 
-## TODO and questions
+## TODO
 
-- Add more model inference examples like YOLO-pose or YOLO-seg
-- concat multiple image segmentation and send it back to serverside
-- ~~Should I use `node-addon-api` to parse the data from Jitter?~~
-- ~~Evaluate `from-syphon.ts` (not sure if it's suitable for live processing as it allocates too much memory).~~
-
+- Add more model inference examples like YOLO-pose or YOLO-seg.
+- Support for multiple simultaneous segmentation results.
