@@ -138,34 +138,38 @@ socket.on("newUser", async (msg) => {
           const { width, height, data, rotation } = frame;
           // console.log(rotation); // 0, 90, 180, 270
 
-          const now = performance.now();
-          if (now - lastFrame < minInterval) return;
-          lastFrame = now;
+          try {
+            const now = performance.now();
+            if (now - lastFrame < minInterval) return;
+            lastFrame = now;
 
-          // Frame is in I420 format, convert to RGBA
-          const rgbaBuffer = new Uint8Array(width * height * 4); // 4 bytes per pixel
-          wrtc.nonstandard.i420ToRgba(
-            {
-              width,
-              height,
-              data, // I420 raw data
-            },
-            {
-              width,
-              height,
-              data: rgbaBuffer,
-            }
-          );
+            // Frame is in I420 format, convert to RGBA
+            const rgbaBuffer = new Uint8Array(width * height * 4); // 4 bytes per pixel
+            wrtc.nonstandard.i420ToRgba(
+              {
+                width,
+                height,
+                data, // I420 raw data
+              },
+              {
+                width,
+                height,
+                data: rgbaBuffer,
+              }
+            );
 
-          const rotated = rotateRGBA(rgbaBuffer, width, height, rotation);
+            const rotated = rotateRGBA(rgbaBuffer, width, height, rotation);
 
-          const buffer = bufferToMatrix({
-            width: rotated.width,
-            height: rotated.height,
-            data: rotated.data,
-          });
+            const buffer = bufferToMatrix({
+              width: rotated.width,
+              height: rotated.height,
+              data: rotated.data,
+            });
 
-          client.write(buffer);
+            client.write(buffer);
+          } catch (error) {
+            console.error("Error processing frame:", error);
+          }
         };
       })
       .on("error", (err) => {
